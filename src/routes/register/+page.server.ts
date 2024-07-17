@@ -1,6 +1,8 @@
 import { lucia } from '$lib/server/auth';
 import prisma from '$lib/server/prisma';
 import { fail, redirect, type Actions } from '@sveltejs/kit';
+import { hash } from '@node-rs/argon2';
+
 export const actions = {
 	default: async (event) => {
 		const formData = await event.request.formData();
@@ -10,13 +12,19 @@ export const actions = {
 			password: formData.get('password') as string
 		};
 
-		const hashPassword = await Bun.password.hash(data.password);
+		const passwordHash = await hash(data.password, {
+			// recommended minimum parameters
+			memoryCost: 19456,
+			timeCost: 2,
+			outputLen: 32,
+			parallelism: 1
+		});
 
 		const user = await prisma.user.create({
 			data: {
 				name: data.name,
 				email: data.email,
-				password: hashPassword
+				password: passwordHash
 			}
 		});
 
